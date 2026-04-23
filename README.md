@@ -160,13 +160,13 @@ The Voucher Service implements **Spring Security** with role-based access contro
 ```java
 @Configuration
 public class WebSecurityConfig {
-    
+  
     // Password encryption with BCrypt
     @Bean
     BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
     }
-    
+  
     // Role-based endpoint authorization
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
@@ -189,10 +189,10 @@ public class WebSecurityConfig {
 ```java
 @Service
 public class UserDetailsServiceVoucher implements UserDetailsService {
-    
+  
     @Autowired
     UserRepository userRepository;
-    
+  
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(username)
@@ -208,12 +208,12 @@ public class UserDetailsServiceVoucher implements UserDetailsService {
 
 ### Role-Based Access Control
 
-| Endpoint | Method | Required Role | Description |
-|----------|--------|---------------|-------------|
-| `/auth/signup` | POST | ADMIN | Register new user |
-| `/voucherapi/vouchers` | POST | ADMIN | Create voucher |
-| `/voucherapi/vouchers/{code}` | GET | USER, ADMIN | Retrieve voucher |
-| All other endpoints | ANY | AUTHENTICATED | Requires valid authentication |
+| Endpoint                        | Method | Required Role | Description                   |
+| ------------------------------- | ------ | ------------- | ----------------------------- |
+| `/auth/signup`                | POST   | ADMIN         | Register new user             |
+| `/voucherapi/vouchers`        | POST   | ADMIN         | Create voucher                |
+| `/voucherapi/vouchers/{code}` | GET    | USER, ADMIN   | Retrieve voucher              |
+| All other endpoints             | ANY    | AUTHENTICATED | Requires valid authentication |
 
 ### Security Features
 
@@ -226,6 +226,7 @@ public class UserDetailsServiceVoucher implements UserDetailsService {
 ### Authentication Flow
 
 1. **User Signup** (ADMIN role required):
+
    ```bash
    POST /auth/signup
    {
@@ -235,17 +236,17 @@ public class UserDetailsServiceVoucher implements UserDetailsService {
      "last_name": "Doe"
    }
    ```
-
 2. **Password Processing**:
+
    - Password encoded using BCryptPasswordEncoder
    - Encrypted password stored in database
-
 3. **User Login** (HTTP Basic):
+
    ```bash
    curl -u user@example.com:securepassword http://localhost:5555/voucherapi/vouchers/CODE
    ```
-
 4. **Authorization Check**:
+
    - Spring Security validates user role
    - Endpoint accessed only if user has required role
    - 403 Forbidden returned if user lacks required role
@@ -273,7 +274,7 @@ curl -u user@example.com:userpass http://localhost:5555/voucherapi/vouchers/TEST
 
 ---
 
-## �🚀 Running the Application
+## 🀽� Running the Application
 
 ### Option 1: Using Maven
 
@@ -499,40 +500,6 @@ shop-microservices/
 └── README.md                                 # This file (main documentation)
 ```
 
----
-
-## 🆕 Recent Updates
-
-### Version 1.2.0 - DataInitializer & Authentication (April 23, 2026)
-
-**New Features:**
-
-- ✨ **DataInitializer Component** - Automatically creates default USER and ADMIN roles on application startup
-- 👤 **User Authentication** - Added user signup endpoint with email and password registration
-- 🔐 **Role-Based Access Control** - Spring Security integration for role management
-- 📚 **Enhanced Documentation** - Comprehensive README files for each microservice
-
-**Fixed Issues:**
-
-- ❌ Fixed: "Default USER role not found" error on signup
-
-**Documentation Improvements:**
-
-- Added [my-voucher-app/README.md](my-voucher-app/README.md) - Voucher Service documentation with authentication details
-- Added [products-rest-api/README.md](products-rest-api/README.md) - Product Service documentation with complete API examples
-
-**How It Works:**
-When Voucher Service starts:
-
-1. Checks if USER role exists in database
-2. Creates USER role if missing
-3. Checks if ADMIN role exists in database
-4. Creates ADMIN role if missing
-5. Logs: "USER role created" and "ADMIN role created" to console
-
-This ensures that signup requests will always find a default role and won't fail with a RuntimeException.
-
----
 
 ## 📖 Service Documentation
 
@@ -557,14 +524,14 @@ Each microservice has its own comprehensive README:
 
 ## 🐛 Troubleshooting
 
-| Issue                                   | Solution                                                                    |
-| --------------------------------------- | --------------------------------------------------------------------------- |
-| **Connection refused**            | Ensure MySQL is running on port 3306                                        |
-| **Databases don't exist**         | Create `projectdb` and `productsdb` manually in MySQL                   |
-| **Port already in use**           | Change port in `application.properties` (e.g., server.port=5551)          |
-| **RestTemplate error**            | Ensure Voucher Service is running before Product Service                    |
-| **401/403 errors**                | Check CORS configuration if accessing from frontend                         |
-| **Signup fails (500 error)**      | Check security configuration and ensure credentials are correct |
+| Issue                              | Solution                                                           |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| **Connection refused**       | Ensure MySQL is running on port 3306                               |
+| **Databases don't exist**    | Create `projectdb` and `productsdb` manually in MySQL          |
+| **Port already in use**      | Change port in `application.properties` (e.g., server.port=5551) |
+| **RestTemplate error**       | Ensure Voucher Service is running before Product Service           |
+| **401/403 errors**           | Check CORS configuration if accessing from frontend                |
+| **Signup fails (500 error)** | Check security configuration and ensure credentials are correct    |
 
 ---
 
