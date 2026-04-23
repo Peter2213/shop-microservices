@@ -40,11 +40,13 @@ The services communicate via REST API calls using Spring's `RestTemplate`, allow
 ### Services
 
 #### 1. **Voucher Service** (`my-voucher-app`)
+
 - **Port**: `5555`
 - **Database**: MySQL - `projectdb`
 - **Purpose**: Manage discount vouchers and provide discount information
 
 **Endpoints**:
+
 - `POST /voucherapi/vouchers` - Create a new voucher
   ```json
   {
@@ -55,11 +57,13 @@ The services communicate via REST API calls using Spring's `RestTemplate`, allow
 - `GET /voucherapi/vouchers/{code}` - Get voucher by code
 
 #### 2. **Product Service** (`products-rest-api`)
+
 - **Port**: `5550`
 - **Database**: MySQL - `productsdb`
 - **Purpose**: Manage products with discount integration
 
 **Endpoints**:
+
 - `POST /productapi/products/` - Create product (applies voucher discount if provided)
   ```json
   {
@@ -80,20 +84,24 @@ The services communicate via REST API calls using Spring's `RestTemplate`, allow
 ## 💻 Technologies Used
 
 ### Core Framework
+
 - **Spring Boot** 4.0.5
 - **Java** 17+
 - **Maven** (Build tool)
 
 ### Data Access
+
 - **Spring Data JPA** - ORM for database operations
 - **MySQL Driver** - Database connectivity
 - **H2 Database** - In-memory database (console available)
 
 ### Web & Communication
+
 - **Spring Web MVC** - REST API development
 - **RestTemplate** - Inter-service HTTP communication
 
 ### Additional Tools
+
 - **Spring Boot H2 Console** - Database browser (http://localhost:8080/h2-console)
 
 ---
@@ -108,6 +116,7 @@ Before running the application, ensure you have:
 - **Git** for version control
 
 **Check versions:**
+
 ```powershell
 java -version
 mvn -version
@@ -131,24 +140,152 @@ CREATE DATABASE productsdb;
 The applications use **Spring Data JPA with Hibernate** to auto-create tables based on entity annotations.
 
 **Voucher Service Tables:**
+
 - `voucher` - Stores voucher information (code, discount)
 
 **Product Service Tables:**
+
 - `product` - Stores product information (name, description, price, voucher_code)
 
 ---
 
-## 🚀 Running the Application
+## � Security Architecture
+
+The Voucher Service implements **Spring Security** with role-based access control (RBAC) and password encryption.
+
+### Authentication & Authorization
+
+**WebSecurityConfig.java** Configuration:
+
+```java
+@Configuration
+public class WebSecurityConfig {
+    
+    // Password encryption with BCrypt
+    @Bean
+    BCryptPasswordEncoder bCryptPasswordEncoder(){
+        return new BCryptPasswordEncoder();
+    }
+    
+    // Role-based endpoint authorization
+    @Bean
+    SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
+        http.httpBasic(Customizer.withDefaults())
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers(HttpMethod.POST, "/auth/signup").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/voucherapi/vouchers/**").hasAnyRole("USER","ADMIN")
+                .requestMatchers(HttpMethod.POST, "/voucherapi/vouchers").hasRole("ADMIN")
+                .anyRequest().authenticated())
+            .csrf(csrf -> csrf.disable());
+        return http.build();
+    }
+}
+```
+
+### User Details Service
+
+**UserDetailsServiceVoucher.java** - Custom Spring Security UserDetailsService:
+
+```java
+@Service
+public class UserDetailsServiceVoucher implements UserDetailsService {
+    
+    @Autowired
+    UserRepository userRepository;
+    
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(username)
+            .orElseThrow(() -> new UsernameNotFoundException("user not found: " + username));
+        return new org.springframework.security.core.userdetails.User(
+            user.getEmail(), 
+            user.getPassword(), 
+            user.getRoles()
+        );
+    }
+}
+```
+
+### Role-Based Access Control
+
+| Endpoint | Method | Required Role | Description |
+|----------|--------|---------------|-------------|
+| `/auth/signup` | POST | ADMIN | Register new user |
+| `/voucherapi/vouchers` | POST | ADMIN | Create voucher |
+| `/voucherapi/vouchers/{code}` | GET | USER, ADMIN | Retrieve voucher |
+| All other endpoints | ANY | AUTHENTICATED | Requires valid authentication |
+
+### Security Features
+
+- ✅ **Password Encryption**: BCrypt hashing for all passwords
+- ✅ **HTTP Basic Authentication**: Built-in Spring Security authentication
+- ✅ **Role-Based Access Control**: Fine-grained endpoint authorization
+- ✅ **CSRF Protection**: Disabled for API (can be enabled for web forms)
+- ✅ **User Details Loading**: Custom service loads users from database by email
+
+### Authentication Flow
+
+1. **User Signup** (ADMIN role required):
+   ```bash
+   POST /auth/signup
+   {
+     "email": "user@example.com",
+     "password": "securepassword",
+     "first_name": "John",
+     "last_name": "Doe"
+   }
+   ```
+
+2. **Password Processing**:
+   - Password encoded using BCryptPasswordEncoder
+   - Encrypted password stored in database
+
+3. **User Login** (HTTP Basic):
+   ```bash
+   curl -u user@example.com:securepassword http://localhost:5555/voucherapi/vouchers/CODE
+   ```
+
+4. **Authorization Check**:
+   - Spring Security validates user role
+   - Endpoint accessed only if user has required role
+   - 403 Forbidden returned if user lacks required role
+
+### Testing with Authentication
+
+**Using cURL with HTTP Basic Auth:**
+
+```bash
+# Create voucher (requires ADMIN role)
+curl -u admin@example.com:adminpass -X POST http://localhost:5555/voucherapi/vouchers \
+  -H "Content-Type: application/json" \
+  -d '{"code":"TEST","discount":10}'
+
+# Get voucher (requires USER or ADMIN role)
+curl -u user@example.com:userpass http://localhost:5555/voucherapi/vouchers/TEST
+```
+
+**Using Postman:**
+
+1. Select **Basic Auth** tab
+2. Enter Username: `user@example.com`
+3. Enter Password: `securepassword`
+4. Make request to protected endpoint
+
+---
+
+## �🚀 Running the Application
 
 ### Option 1: Using Maven
 
 **Step 1: Start Voucher Service (Port 5555)**
+
 ```powershell
 cd my-voucher-app
 .\mvnw spring-boot:run
 ```
 
 **Step 2: Start Product Service in another terminal (Port 5550)**
+
 ```powershell
 cd products-rest-api
 .\mvnw spring-boot:run
@@ -157,6 +294,7 @@ cd products-rest-api
 ### Option 2: Build and Run JAR
 
 **Build Voucher Service:**
+
 ```powershell
 cd my-voucher-app
 .\mvnw clean package
@@ -164,6 +302,7 @@ java -jar target/my-voucher-app-0.0.1-SNAPSHOT.jar
 ```
 
 **Build Product Service:**
+
 ```powershell
 cd products-rest-api
 .\mvnw clean package
@@ -172,38 +311,10 @@ java -jar target/products-rest-api-0.0.1-SNAPSHOT.jar
 
 ---
 
-## 🔐 Security - Credentials Management
-
-**⚠️ Important:** Never commit sensitive credentials to version control.
-
-### Setup Instructions
-Configure database credentials securely:
-
-**Option 1: Environment Variables** (Recommended for production)
-```powershell
-$env:DB_USERNAME="your_username"
-$env:DB_PASSWORD="your_password"
-```
-
-Then reference in `application.properties`:
-```properties
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-```
-
-**Option 2: application-secret.properties** (For local development)
-Create a local `application-secret.properties` file (do NOT commit to git):
-
-Add to `.gitignore`:
-```
-application-secret.properties
-```
-
----
-
 ## 📋 Application Properties
 
 ### Voucher Service (`my-voucher-app/application.properties`)
+
 ```properties
 spring.application.name=my-voucher-app
 server.port=5555
@@ -219,6 +330,7 @@ spring.jpa.show-sql=true
 ```
 
 ### Product Service (`products-rest-api/application.properties`)
+
 ```properties
 spring.application.name=products-rest-api
 server.port=5550
@@ -243,16 +355,17 @@ spring.jpa.show-sql=true
 ### Workflow: Creating a Product with Discount
 
 1. **Client** sends POST request to Product Service:
+
    ```
    POST http://localhost:5550/productapi/products/
    Body: { name: "Laptop", price: 1000.00, voucherCode: "SUMMER2024" }
    ```
-
 2. **Product Service** receives request and:
+
    - Extracts `voucherCode` from request
    - Calls **Voucher Service**: `GET http://localhost:5555/voucherapi/vouchers/SUMMER2024`
-
 3. **Voucher Service** responds with:
+
    ```json
    {
      "id": 1,
@@ -260,12 +373,11 @@ spring.jpa.show-sql=true
      "discount": 15.00
    }
    ```
-
 4. **Product Service** applies discount:
+
    - Original Price: 1000.00
    - Discount: 15.00
    - **Final Price: 985.00**
-
 5. Product is saved with discounted price
 
 ---
@@ -275,6 +387,7 @@ spring.jpa.show-sql=true
 ### Using cURL or Postman
 
 **Create a Voucher:**
+
 ```bash
 curl -X POST http://localhost:5555/voucherapi/vouchers \
   -H "Content-Type: application/json" \
@@ -282,11 +395,13 @@ curl -X POST http://localhost:5555/voucherapi/vouchers \
 ```
 
 **Get Voucher:**
+
 ```bash
 curl http://localhost:5555/voucherapi/vouchers/SUMMER2024
 ```
 
 **Create Product with Discount:**
+
 ```bash
 curl -X POST http://localhost:5550/productapi/products/ \
   -H "Content-Type: application/json" \
@@ -299,16 +414,19 @@ curl -X POST http://localhost:5550/productapi/products/ \
 ```
 
 **Get All Products:**
+
 ```bash
 curl http://localhost:5550/productapi/products/
 ```
 
 **Get Product by ID:**
+
 ```bash
 curl http://localhost:5550/productapi/products/1
 ```
 
 **Update Product (Full):**
+
 ```bash
 curl -X PUT http://localhost:5550/productapi/products/1 \
   -H "Content-Type: application/json" \
@@ -316,6 +434,7 @@ curl -X PUT http://localhost:5550/productapi/products/1 \
 ```
 
 **Partial Update (PATCH):**
+
 ```bash
 curl -X PATCH http://localhost:5550/productapi/products/1 \
   -H "Content-Type: application/json" \
@@ -323,6 +442,7 @@ curl -X PATCH http://localhost:5550/productapi/products/1 \
 ```
 
 **Delete Product:**
+
 ```bash
 curl -X DELETE http://localhost:5550/productapi/products/1
 ```
@@ -334,19 +454,35 @@ curl -X DELETE http://localhost:5550/productapi/products/1
 ```
 shop-microservices/
 ├── my-voucher-app/                          # Voucher Service
+│   ├── README.md                            # Service documentation
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/example/my_voucher_app/
 │   │   │   │   ├── MyVoucherAppApplication.java
-│   │   │   │   ├── controllers/VoucherController.java
-│   │   │   │   ├── model/Voucher.java
-│   │   │   │   └── repo/VoucherRepo.java
+│   │   │   │   ├── controllers/
+│   │   │   │   │   ├── AuthController.java
+│   │   │   │   │   └── VoucherController.java
+│   │   │   │   ├── model/
+│   │   │   │   │   ├── Role.java
+│   │   │   │   │   ├── User.java
+│   │   │   │   │   └── Voucher.java
+│   │   │   │   ├── repo/
+│   │   │   │   │   ├── RoleRepository.java
+│   │   │   │   │   ├── UserRepository.java
+│   │   │   │   │   └── VoucherRepo.java
+│   │   │   │   ├── security/
+│   │   │   │   │   ├── UserDetailsServiceVoucher.java
+│   │   │   │   │   └── config/
+│   │   │   │   │       ├── DataInitializer.java (NEW)
+│   │   │   │   │       └── WebSecurityConfig.java
+│   │   │   │   └── dto/SignupRequest.java
 │   │   │   └── resources/application.properties
 │   │   └── test/
 │   ├── pom.xml
 │   └── mvnw
 │
 ├── products-rest-api/                       # Product Service
+│   ├── README.md                            # Service documentation
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/example/products_rest_api/
@@ -360,26 +496,82 @@ shop-microservices/
 │   ├── pom.xml
 │   └── mvnw
 │
-└── README.md                                 # This file
+└── README.md                                 # This file (main documentation)
 ```
+
+---
+
+## 🆕 Recent Updates
+
+### Version 1.2.0 - DataInitializer & Authentication (April 23, 2026)
+
+**New Features:**
+
+- ✨ **DataInitializer Component** - Automatically creates default USER and ADMIN roles on application startup
+- 👤 **User Authentication** - Added user signup endpoint with email and password registration
+- 🔐 **Role-Based Access Control** - Spring Security integration for role management
+- 📚 **Enhanced Documentation** - Comprehensive README files for each microservice
+
+**Fixed Issues:**
+
+- ❌ Fixed: "Default USER role not found" error on signup
+
+**Documentation Improvements:**
+
+- Added [my-voucher-app/README.md](my-voucher-app/README.md) - Voucher Service documentation with authentication details
+- Added [products-rest-api/README.md](products-rest-api/README.md) - Product Service documentation with complete API examples
+
+**How It Works:**
+When Voucher Service starts:
+
+1. Checks if USER role exists in database
+2. Creates USER role if missing
+3. Checks if ADMIN role exists in database
+4. Creates ADMIN role if missing
+5. Logs: "USER role created" and "ADMIN role created" to console
+
+This ensures that signup requests will always find a default role and won't fail with a RuntimeException.
+
+---
+
+## 📖 Service Documentation
+
+Each microservice has its own comprehensive README:
+
+- **[my-voucher-app/README.md](my-voucher-app/README.md)** - Voucher Service
+
+  - User authentication and signup
+  - Role management
+  - Voucher CRUD operations
+  - Testing guide
+  - Troubleshooting
+- **[products-rest-api/README.md](products-rest-api/README.md)** - Product Service
+
+  - Complete API endpoint documentation
+  - Service communication with Voucher Service
+  - Discount application workflow
+  - cURL examples for all operations
+  - Testing guide
 
 ---
 
 ## 🐛 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| **Connection refused** | Ensure MySQL is running on port 3306 |
-| **Databases don't exist** | Create `projectdb` and `productsdb` manually in MySQL |
-| **Port already in use** | Change port in `application.properties` (e.g., server.port=5551) |
-| **RestTemplate error** | Ensure Voucher Service is running before Product Service |
-| **401/403 errors** | Check CORS configuration if accessing from frontend |
+| Issue                                   | Solution                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| **Connection refused**            | Ensure MySQL is running on port 3306                                        |
+| **Databases don't exist**         | Create `projectdb` and `productsdb` manually in MySQL                   |
+| **Port already in use**           | Change port in `application.properties` (e.g., server.port=5551)          |
+| **RestTemplate error**            | Ensure Voucher Service is running before Product Service                    |
+| **401/403 errors**                | Check CORS configuration if accessing from frontend                         |
+| **Signup fails (500 error)**      | Check security configuration and ensure credentials are correct |
 
 ---
 
 ## 🧪 Testing the Services
 
 ### 1. Test Voucher Service Independently
+
 ```powershell
 # Terminal 1: Start Voucher Service
 cd my-voucher-app
@@ -390,6 +582,7 @@ curl http://localhost:5555/voucherapi/vouchers/SUMMER2024
 ```
 
 ### 2. Test Product Service with Service Call
+
 ```powershell
 # Terminal 1: Start Voucher Service
 cd my-voucher-app
@@ -437,4 +630,4 @@ For issues or questions, please create an issue in the repository.
 
 ---
 
-**Last Updated:** April 22, 2026
+**Last Updated:** April 23, 2026
