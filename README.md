@@ -500,28 +500,6 @@ shop-microservices/
 └── README.md                                 # This file (main documentation)
 ```
 
-
-## 📖 Service Documentation
-
-Each microservice has its own comprehensive README:
-
-- **[my-voucher-app/README.md](my-voucher-app/README.md)** - Voucher Service
-
-  - User authentication and signup
-  - Role management
-  - Voucher CRUD operations
-  - Testing guide
-  - Troubleshooting
-- **[products-rest-api/README.md](products-rest-api/README.md)** - Product Service
-
-  - Complete API endpoint documentation
-  - Service communication with Voucher Service
-  - Discount application workflow
-  - cURL examples for all operations
-  - Testing guide
-
----
-
 ## 🐛 Troubleshooting
 
 | Issue                              | Solution                                                           |
@@ -582,18 +560,6 @@ For production deployment:
 ## 📝 License
 
 This project is open source and available for educational purposes.
-
----
-
-## 👨‍💻 Author
-
-**Peter2213** - Microservices Development
-
----
-
-## 📞 Support
-
-For issues or questions, please create an issue in the repository.
 
 ---
 
